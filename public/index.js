@@ -26,6 +26,7 @@ const userID_cookieName = "circle_userID";
 const initial_cookieName = "circle_initial";
 var currentUrl = window.kly.url;
 const dbPath = "userVisit/" + currentUrl + "/";
+const dbCommentPath = "comments/" + currentUrl + "/";
 
 var userId = setUserIDCookie();
 var [userInitial, userName] = generateRandomInitialsAndNames();
@@ -221,3 +222,77 @@ function parseUserAgent(userAgent) {
 
 // Call updateUserActivity when the page loads
 updateUserActivity();
+
+var btnSend = document.getElementById("btn-send");
+var inputComment = document.getElementById("input-comment");
+
+inputComment.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+        btnSend.click();
+    }
+});
+
+btnSend.addEventListener("click", function(){
+    let inputValue = inputComment.value;
+    inputValue = inputValue.trim();
+
+    if(inputValue != ''){
+        addComment(inputValue);
+        inputComment.value = ''
+    }
+})
+
+function addComment(text){
+    let commentId = 'cmt-' + Math.floor(Math.random() * 10000);
+    set(ref(database, dbCommentPath + commentId), {
+        userid: userId,
+        initial: userInitial,
+        name: userName,
+        commentid : commentId,
+        textcomment : text,
+        last_update: serverTimestamp()
+    });
+
+    updateCommentsList()
+}
+
+function updateCommentsList(){
+    let chatContainer = document.getElementById("chat-container");
+
+    onValue(ref(database, dbCommentPath), (snapshot) => {
+        let totalComments = 0;
+        const commentsList = [];
+
+        snapshot.forEach((commentSnapshot) => {
+            const commentData = commentSnapshot.val();
+            const userInitialComment = commentData.initial;
+            const userNameComment = commentData.name;
+            const textcomment = commentData.textcomment;
+            const timestamp = commentData.last_update;
+
+            commentsList.push({userNameComment, userInitialComment, textcomment, timestamp})
+            totalComments++;
+        })
+
+        chatContainer.innerHTML = "";
+        commentsList.sort((a, b) => (a.timestamp > b.timestamp) ? 1 : -1)
+        commentsList.forEach((cmt) => {
+            let item = `
+            <div class="chat-item">
+                <div class="avatar">
+                    <span>${cmt.userInitialComment}</span>
+                </div>
+                <div class="chat-content">
+                    <span>${cmt.userNameComment} <span>${cmt.timestamp}</span></span>
+                    <p>${cmt.textcomment}</p>
+                </div>
+            </div>
+            `;
+
+            chatContainer.innerHTML += item;
+        })
+    })
+}
+
+updateCommentsList();
+
