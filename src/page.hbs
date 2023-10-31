@@ -8,7 +8,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <script async src="https://cdn.jsdelivr.net/npm/es-module-shims@1/dist/es-module-shims.min.js" crossorigin="anonymous"></script>
+    <script type="importmap">
+    {
+      "imports": {
+        "@popperjs/core": "https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/esm/popper.min.js",
+        "bootstrap": "https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.esm.min.js"
+      }
+    }
+    </script>
+    <script type="module">
+      import * as bootstrap from 'bootstrap'
 
+    </script>
     <style>
         body {
             font-family: Arial, Helvetica, sans-serif;
@@ -108,17 +120,126 @@
         #active-user {
             margin-left: 25px;
         }
-        #btn-comment{
+
+        #btn-comment {
             background-color: #3498db;
             border-radius: 5px;
             border: solid 1px #34495e;
             width: fit-content;
             height: 40px;
         }
-        pre{
+
+        pre {
             background-color: #000;
             color: #fff;
             padding: 10px;
+        }
+    </style>
+    <style>
+        .tab-content {
+            height: calc(100% - 76px);
+        }
+
+        #btn-send {
+            background-color: #b386fb;
+            border-radius: 5px;
+            border: solid 1px #34495e;
+            width: fit-content;
+            height: 40px;
+            padding: 0 20px;
+            margin-left: 5px;
+        }
+
+        .chat-form {
+            display: flex;
+            flex-direction: row;
+            height: 40px;
+        }
+
+        .viewer-container,
+        .chat-container {
+            height: calc(100% - 60px);
+            margin-bottom: 10px;
+            overflow-y: scroll;
+            box-sizing: border-box;
+            padding: 15px;
+        }
+
+        .viewer-container {
+            height: 100%;
+        }
+
+        .chat-item {
+            display: flex;
+            flex-direction: row;
+        }
+
+        .chat-item .avatar {
+            height: 45px;
+            width: 45px;
+            background: red;
+            border-radius: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-sizing: border-box;
+            margin: 5px;
+            flex-shrink: 0;
+        }
+        .chat-item .avatar span{
+            color: #fff;
+        }
+        .chat-item .chat-content {
+            display: block;
+            width: auto;
+            box-sizing: border-box;
+            padding: 0 10px;
+            flex-shrink: inherit;
+        }
+
+        .chat-item .chat-content span {
+            font-size: 12px;
+            color: gray;
+        }
+
+        .chat-item .chat-content span.active {
+            color: green;
+        }
+
+        .chat-item .chat-content p {
+            font-size: 14px;
+            line-height: 20px;
+        }
+
+        .overlay {
+            position: fixed;
+            width: 100vw;
+            height: 100vh;
+            background: #21212190;
+            bottom: -100vh;
+            z-index: 2;
+            opacity: 0;
+            transition: all .25s ease;
+        }
+
+        .overlay.active {
+            bottom: 0;
+            opacity: 1;
+        }
+        .nav-tabs .nav-item.show .nav-link, .nav-tabs .nav-link {
+            opacity: .4;
+        }
+        .nav-tabs .nav-item.show .nav-link, .nav-tabs .nav-link.active {
+            font-weight: bold;
+            opacity: 1;
+        }
+        .comment-section {
+            bottom: -100vh;
+            transition: all .5s ease;
+        }
+
+        .comment-section.active {
+            bottom: 0;
         }
     </style>
     <script>
@@ -144,7 +265,8 @@
                                 <path d="M1 0V54.039L31 76.2903L1 101.72V380" stroke="currentColor"
                                     stroke-width="1.20837"></path>
                             </svg>
-                            <h2 class="article-title font-semibold mb-6  animate animate--fadeInUp vh-text-xl" style="--delay: 100ms">
+                            <h2 class="article-title font-semibold mb-6  animate animate--fadeInUp vh-text-xl"
+                                style="--delay: 100ms">
                                 {{data.content}}
                             </h2>
                         </div>
@@ -216,7 +338,7 @@
                     </circle>
                 </svg>
             </ul>
-            <button class="col-3" id="btn-comment">Comment</button>
+            <button class="col-3" id="btn-comment">Komentar</button>
         </div>
         <hr />
         <div class="row mb-5">
@@ -230,6 +352,77 @@
             <pre id="debug-row"></pre>
         </div>
     </div>
+    <div class="overlay"></div>
+    <div
+        class="bg-body-secondary border border-2 border-secondary comment-section h-50 position-absolute rounded-top-4 w-100 z-3">
+        <!-- Nav tabs -->
+        <div class="col flex justify-content-around nav nav-tabs p-2" id="myTab" role="tablist">
+            <div class="nav-item " role="presentation">
+                <button class="active bg-transparent border-0 nav-link text-black fs-6" id="home-tab" data-bs-toggle="tab"
+                    data-bs-target="#komentar" type="button" role="tab" aria-controls="komentar"
+                    aria-selected="true">Komentar</button>
+            </div>
+            <div class="nav-item" role="presentation">
+                <button class=" bg-transparent border-0 nav-link text-black fs-6" id="pembaca-tab" data-bs-toggle="tab"
+                    data-bs-target="#pembaca" type="button" role="tab" aria-controls="pembaca"
+                    aria-selected="false">Pembaca</button>
+            </div>
+        </div>
+
+        <!-- Tab panes -->
+        <div class="tab-content container">
+            <div class="tab-pane active h-100" id="komentar" role="tabpanel" aria-labelledby="komentar-tab"
+                tabindex="0">
+                <div class="card bg-white chat-container border-2">
+                    <!--div class="chat-item">
+                        <div class="avatar">
+                            <span>AB</span>
+                        </div>
+                        <div class="chat-content">
+                            <span>ana bul</span>
+                            <p>Lorem ipsum dolor sit amet consectetur adipisicing elit. Lorem ipsum dolor sit amet
+                                consectetur adipisicing elit</p>
+                        </div>
+                    </div-->
+                </div>
+                <div class="w-100 chat-form">
+                    <input type="text" class="form-control border border-secondary" placeholder="type here">
+                    <button type="button" class=" mb-3" id="btn-send">kirim</button>
+                </div>
+
+            </div>
+            <div class="tab-pane h-100" id="pembaca" role="tabpanel" aria-labelledby="pembaca-tab" tabindex="0">
+                <div class="card bg-white viewer-container border-2">
+                    <!--div class="chat-item">
+                        <div class="avatar">
+                            <span>AB</span>
+                        </div>
+                        <div class="chat-content">
+                            <span class="active">online</span>
+                            <p>Lorem ipsum</p>
+                        </div>
+                    </div-->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var btnComment = document.getElementById("btn-comment")
+        var commentSection = document.querySelector(".comment-section")
+        var overlay = document.querySelector(".overlay")
+        btnComment.addEventListener("click", openCommentSection)
+
+        function openCommentSection() {
+            commentSection.classList.add("active")
+            overlay.classList.add("active")
+        }
+
+        overlay.addEventListener("click", function () {
+            commentSection.classList.remove("active")
+            overlay.classList.remove("active")
+        })
+    </script>
     <script type="module" src="./index.js"></script>
 </body>
 
