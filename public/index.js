@@ -1,7 +1,7 @@
 //import { json } from "body-parser";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-app.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-auth.js";
-import { getDatabase, ref, set, serverTimestamp, onValue } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-database.js";
+import { getDatabase, ref, set, serverTimestamp, onValue, query, orderByKey, orderByChild, limitToFirst, limitToLast, remove  } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-database.js";
 
 // TODO: Replace the following with your app's Firebase project configuration
 // See: https://firebase.google.com/docs/web/learn-more#config-object
@@ -91,7 +91,7 @@ function displayActiveUsers() {
         snapshot.forEach((userSnapshot) => {
             const userData = userSnapshot.val();
             const initials = userData.initial;
-            const timestamp = userData.last_update;
+            const timestamp = userData.last_update;            
             dt.push(userData);
             const timeDifferenceInSeconds = Math.floor((currentTime - timestamp) / 1000);
             if (timeDifferenceInSeconds <= 300) {
@@ -243,14 +243,13 @@ btnSend.addEventListener("click", function(){
 })
 
 function addComment(text){
-    let commentId = 'cmt-' + Math.floor(Math.random() * 10000);
+    let commentId = new Date().getTime();
+    
     set(ref(database, dbCommentPath + commentId), {
         userid: userId,
         initial: userInitial,
         name: userName,
-        commentid : commentId,
         textcomment : text,
-        last_update: serverTimestamp()
     });
 
     updateCommentsList()
@@ -258,24 +257,22 @@ function addComment(text){
 
 function updateCommentsList(){
     let chatContainer = document.getElementById("chat-container");
-
-    onValue(ref(database, dbCommentPath), (snapshot) => {
+    
+    onValue(query(ref(database, dbCommentPath), limitToLast(100)), (snapshot) => {
         let totalComments = 0;
         const commentsList = [];
-
-        snapshot.forEach((commentSnapshot) => {
+        // snapshot.remove();
+        snapshot.forEach((commentSnapshot) => {                        
             const commentData = commentSnapshot.val();
             const userInitialComment = commentData.initial;
             const userNameComment = commentData.name;
             const textcomment = commentData.textcomment;
-            const timestamp = commentData.last_update;
-
+            const timestamp = commentSnapshot.key;
             commentsList.push({userNameComment, userInitialComment, textcomment, timestamp})
             totalComments++;
         })
 
         chatContainer.innerHTML = "";
-        commentsList.sort((a, b) => (a.timestamp > b.timestamp) ? 1 : -1)
         commentsList.forEach((cmt) => {
             let item = `
             <div class="chat-item">
