@@ -87,6 +87,8 @@ function displayActiveUsers() {
         let allUsers = 0; // Initialize row count
         let activeUsers = 0; // Initialize row count
         var dt = Array();
+        var userList = Array();
+        var userTimelapse = "online";
 
         snapshot.forEach((userSnapshot) => {
             const userData = userSnapshot.val();
@@ -94,11 +96,30 @@ function displayActiveUsers() {
             const timestamp = userData.last_update;            
             dt.push(userData);
             const timeDifferenceInSeconds = Math.floor((currentTime - timestamp) / 1000);
-            if (timeDifferenceInSeconds <= 300) {
+            if (timeDifferenceInSeconds <= 300) { //less than 5 min
                 userActivityList.push({ initials, timeDifferenceInSeconds });
                 activeUsers++; // Increment the row count for each active user child
+            }else if(timeDifferenceInSeconds<=3600){ //less than 1 hour
+                userTimelapse = "aktif " + parseInt(timeDifferenceInSeconds/60) + " menit yang lalu";
+            }else if(timeDifferenceInSeconds<=86400){ //less than 24 hour
+                userTimelapse = "aktif " + parseInt(timeDifferenceInSeconds/3600) + " jam yang lalu";
+            }else{
+                userTimelapse = "offline";
             }
             allUsers++; // Increment the row count for each child
+
+            //add user detail list
+            userList.push(`
+                <div class="chat-item">
+                    <div class="avatar">
+                        <span>`+userData.initial+`</span>
+                    </div>
+                    <div class="chat-content">
+                        <span>`+userTimelapse+`</span>
+                        <p>`+userData.name+`</p>
+                    </div>
+                </div>
+            `);
 
         });
 
@@ -119,6 +140,7 @@ function displayActiveUsers() {
         document.getElementById('all-user').innerHTML = allUsers;
 
         document.getElementById('debug-row').textContent = JSON.stringify(dt, undefined, 2);
+        document.getElementsByClassName('viewer-container')[0].innerHTML = userList.join(' ');
     });
 }
 
