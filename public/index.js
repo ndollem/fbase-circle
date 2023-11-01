@@ -1,7 +1,7 @@
 //import { json } from "body-parser";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-app.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-auth.js";
-import { getDatabase, ref, set, serverTimestamp, onValue, query, orderByKey, orderByChild, limitToFirst, limitToLast, remove  } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-database.js";
+import { getDatabase, ref, set, serverTimestamp, onValue, query, orderByKey, orderByChild, limitToFirst, limitToLast, remove, update} from "https://www.gstatic.com/firebasejs/10.5.2/firebase-database.js";
 
 // TODO: Replace the following with your app's Firebase project configuration
 // See: https://firebase.google.com/docs/web/learn-more#config-object
@@ -24,6 +24,8 @@ const database = getDatabase(firebaseApp);
 // Setup necessary constant
 const userID_cookieName = "circle_userID";
 const initial_cookieName = "circle_initial";
+const thumbColor_cookieName = "circle_thumbColor";
+
 var currentUrl = window.kly.url;
 const dbPath = "userVisit/" + currentUrl + "/";
 const dbCommentPath = "comments/" + currentUrl + "/";
@@ -32,12 +34,13 @@ var userId = setUserIDCookie();
 var [userInitial, userName] = generateRandomInitialsAndNames();
 var userInitial = setOrGetInitialsCookie(userInitial);
 var userStatus = "anonymous";
-
-
+var randomThumbColor = generateRandomColorThumb();
+var thumbColor = setOrGetThumbColorCookie(randomThumbColor);
 // Function to generate random initials and names for anonymous users
 function generateRandomInitialsAndNames() {
     const colors = ["Amber", "Blue", "Cyan", "Dandelion", "Emerald", "Fuchsia", "Gold", "Heliotrope", "Indigo", "Jade", "Khaki", "Lavender", "Magenta", "Navy", "Orange", "Purple", "Quartz", "Red", "Sienna", "Teal", "Ultramarine", "Violet", "White", "Xanadu", "Yellow", "Zaffre"];
     const animals = ["Alligator", "Bear", "Cat", "Dog", "Elephant", "Fox", "Giraffe", "Hippopotamus", "Ibis", "Jaguar", "Kangaroo", "Lion", "Monkey", "Newt", "Ostrich", "Panda", "Quail", "Rhinoceros", "Snake", "Tiger", "Umbrellabird", "Vulture", "Walrus", "Xenarthra", "Yak", "Zebra"];
+    
 
     var initial = getCookie(initial_cookieName);
     if (initial != '' && initial != null) {
@@ -45,7 +48,7 @@ function generateRandomInitialsAndNames() {
         const initialAnimal = animals.find((animal) => animal.startsWith(initial.charAt(1).toUpperCase()));
 
         if (initialColor && initialAnimal) {
-            const name = `${initialColor} ${initialAnimal}`;
+            const name = `${initialColor} ${initialAnimal}`;            
             return [initial, name];
         }
     }
@@ -58,14 +61,53 @@ function generateRandomInitialsAndNames() {
     return [initials, name];
 }
 
+function generateRandomColorThumb(){
+    var thumbColor = getCookie(thumbColor_cookieName);
+    if (thumbColor != '' && thumbColor != null) {
+        return thumbColor;
+    }
+
+    const thumbColors = [
+        '#ff5733', // tomato
+        '#c70039', // crimson
+        '#900c3f', // maroon
+        '#ffc0cb', // pink
+        '#800000', // navy
+        '#4b0082', // indigo
+        '#282828', // slate grey
+        '#4682b4', // steel blue
+        '#0000ff', // blue
+        '#00ff00', // lime
+        '#008000', // green
+        '#00ffff', // aqua
+        '#008080', // teal
+        '#000080', // navy
+        '#800080', // purple
+        '#008080', // cyan
+        '#ffa500', // orange
+        '#daa520', // goldenrod
+        '#808080', // grey
+        '#b8860b', // dark goldenrod
+        '#a9a9a9', // dark grey
+        '#a0522d', // sienna
+        '#add8e6', // light blue
+        '#800080', // purple
+        '#6a5acd', // slate blue
+        '#6b8e23', // olive drab
+    ];
+    const randomThumbColor = thumbColors[Math.floor(Math.random() * thumbColors.length)];
+
+    return randomThumbColor;
+}
 // Function to update user activity when the page is loaded
 function updateUserActivity() {
     const userAgent = navigator.userAgent;
-    const { browserName, browserVersion, osName } = parseUserAgent(userAgent);
+    const { browserName, browserVersion, osName } = parseUserAgent(userAgent);    
 
     set(ref(database, dbPath + userId), {
         userid: userId,
         initial: userInitial,
+        thumbColor: thumbColor,
         name: userName,
         userAgent: navigator.userAgent,
         browserName: browserName,
@@ -93,11 +135,12 @@ function displayActiveUsers() {
         snapshot.forEach((userSnapshot) => {
             const userData = userSnapshot.val();
             const initials = userData.initial;
+            const thumbColor = userData.thumbColor ? userData.thumbColor : '#808080';
             const timestamp = userData.last_update;            
             dt.push(userData);
             const timeDifferenceInSeconds = Math.floor((currentTime - timestamp) / 1000);
             if (timeDifferenceInSeconds <= 300) { //less than 5 min
-                userActivityList.push({ initials, timeDifferenceInSeconds });
+                userActivityList.push({ initials, timeDifferenceInSeconds, thumbColor });
                 activeUsers++; // Increment the row count for each active user child
             }else if(timeDifferenceInSeconds<=3600){ //less than 1 hour
                 userTimelapse = "aktif " + parseInt(timeDifferenceInSeconds/60) + " menit yang lalu";
@@ -111,7 +154,7 @@ function displayActiveUsers() {
             //add user detail list
             userList.push(`
                 <div class="chat-item">
-                    <div class="avatar">
+                    <div class="avatar" style="background-color: ${thumbColor}">
                         <span>`+userData.initial+`</span>
                     </div>
                     <div class="chat-content">
@@ -128,8 +171,9 @@ function displayActiveUsers() {
             userActivityList.splice(0, userActivityList.length - 5);
         }
 
-        const initialsDisplay = userActivityList.map((user) => {
-            return `<li><span>${user.initials}</span></li>`;
+        const initialsDisplay = userActivityList.map((user) => {      
+            let thumbColor = user.thumbColor ? user.thumbColor : '#808080';            
+            return `<li style="background-color: ${thumbColor}"><span>${user.initials}</span></li>`;                
         }).join(' ');
         document.getElementById('user-initials').innerHTML = initialsDisplay + `<span id="active-user">` +activeUsers+` user sedang aktif</span>`;
 
@@ -171,6 +215,19 @@ function setOrGetInitialsCookie(userInitial) {
         return userInitial;
     } else {
         return existingInitials;
+    }
+}
+
+function setOrGetThumbColorCookie(thumbColor) {
+    const cookieName = thumbColor_cookieName;
+    const existingThumbColor = getCookie(cookieName);
+
+    if (!existingThumbColor) {
+        // Set the user's initials as a cookie if not already set
+        document.cookie = `${cookieName}=${thumbColor}; expires=${getCookieExpiration(7)}`;
+        return thumbColor;
+    } else {
+        return existingThumbColor;
     }
 }
 
@@ -245,6 +302,16 @@ function parseUserAgent(userAgent) {
 // Call updateUserActivity when the page loads
 updateUserActivity();
 
+
+
+
+
+
+/**=================================== */
+//comment section
+/**=================================== */
+
+
 var btnSend = document.getElementById("btn-send");
 var inputComment = document.getElementById("input-comment");
 
@@ -279,10 +346,12 @@ function addComment(text){
 
 function updateCommentsList(){
     let chatContainer = document.getElementById("chat-container");
-    
+    const currentTime = Date.now();
+
     onValue(query(ref(database, dbCommentPath), limitToLast(100)), (snapshot) => {
         let totalComments = 0;
         const commentsList = [];
+        var userTimelapse = "";
         // snapshot.remove();
         snapshot.forEach((commentSnapshot) => {                        
             const commentData = commentSnapshot.val();
@@ -290,28 +359,118 @@ function updateCommentsList(){
             const userNameComment = commentData.name;
             const textcomment = commentData.textcomment;
             const timestamp = commentSnapshot.key;
-            commentsList.push({userNameComment, userInitialComment, textcomment, timestamp})
+            const likes = commentData.likes;
+            let userThumbColor = '';
+            onValue(ref(database, dbPath + commentData.userid), (snapshot) => {
+                const user = snapshot.val();
+                userThumbColor = user.thumbColor
+            })
+
+            const timeDifferenceInSeconds = Math.floor((currentTime - timestamp) / 1000);
+            if (timeDifferenceInSeconds <= 300) { //less than 5 min
+                userTimelapse = "baru saja"
+            }else if(timeDifferenceInSeconds<=3600){ //less than 1 hour
+                userTimelapse = parseInt(timeDifferenceInSeconds/60) + " menit yang lalu";
+            }else if(timeDifferenceInSeconds<=86400){ //less than 24 hour
+                userTimelapse = parseInt(timeDifferenceInSeconds/3600) + " jam yang lalu";
+            }else{
+                userTimelapse = "beberapa hari yang lalu";
+            }
+            commentsList.push({userNameComment, userInitialComment, textcomment, timestamp, userTimelapse, userThumbColor, likes})
             totalComments++;
         })
 
         chatContainer.innerHTML = "";
         commentsList.forEach((cmt) => {
+            
+            let likes = 0;
+            let btnThumbsUpClass = `fa-regular fa-thumbs-up`;
+            let thumbColor = cmt.userThumbColor ? cmt.userThumbColor : '#808080';            
+            let style = `style="background-color: ${thumbColor};"`;            
+
+            if(cmt.likes){
+                likes = (cmt.likes).length;
+                if((cmt.likes).indexOf(userId) > -1){
+                    btnThumbsUpClass = `fa-solid fa-thumbs-up`;
+                }
+            }
+
             let item = `
             <div class="chat-item">
-                <div class="avatar">
+                <div class="avatar" ${style}>
                     <span>${cmt.userInitialComment}</span>
                 </div>
                 <div class="chat-content">
-                    <span>${cmt.userNameComment} <span>${cmt.timestamp}</span></span>
+                    <span><b>${cmt.userNameComment}</b> <span>${cmt.userTimelapse}</span></span>
                     <p>${cmt.textcomment}</p>
+                    <div class="comment-activity d-flex gap-1 mb-2">
+                        <button data-target="${cmt.timestamp}" class="btn btn-sm btn-outline-light btn-like"><span class="like-btn"><i class="${btnThumbsUpClass}"></i> <span class="total-likes">${likes}</span></span></button>                        
+                    </div>                    
                 </div>
             </div>
             `;
 
             chatContainer.innerHTML += item;
+
         })
     })
+
+
 }
 
 updateCommentsList();
 
+
+
+/**=================================== */
+//Like section
+/**=================================== */
+
+function onElement(selector, eventType, callback) {
+    const observer = new MutationObserver((mutations) => {
+       mutations.forEach((mutation) => {
+         if (mutation.type === 'childList') {
+           Array.from(mutation.target.querySelectorAll(selector)).forEach((element) => {
+             element.addEventListener(eventType, callback);
+           });
+         }
+       });
+    });
+   
+    observer.observe(document.body, { childList: true, subtree: true });
+   
+    // Apply the event to existing elements
+    Array.from(document.body.querySelectorAll(selector)).forEach((element) => {
+       element.addEventListener(eventType, callback);
+    });
+   }
+   
+   onElement('.btn-like', 'click', function() {            
+        let comment_id = this.getAttribute('data-target')        
+        let lastLikes = [];
+        var userLikes = [];
+        onValue(ref(database, dbCommentPath + comment_id), (snapshot) => {
+            let likes = snapshot.val().likes;
+            if(likes){
+                userLikes = lastLikes.concat(likes);
+            }
+        })
+
+        const useridIndex = userLikes.indexOf(userId);        
+
+        let newUserLikes;
+        if(userLikes && useridIndex > -1){
+            userLikes.splice(useridIndex, 1);
+            newUserLikes = userLikes;
+        }else{
+            newUserLikes = userLikes.concat([userId]);
+        }
+
+        if((newUserLikes).length == 0){
+            newUserLikes = null;
+        }
+
+        update(ref(database, dbCommentPath + comment_id), {
+            likes: newUserLikes
+        });
+    });
